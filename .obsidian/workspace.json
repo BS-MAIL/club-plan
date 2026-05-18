@@ -1,0 +1,200 @@
+{
+  "main": {
+    "id": "8f6e4377f21bd68f",
+    "type": "split",
+    "children": [
+      {
+        "id": "161a484214243081",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "37048424e566ac0a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "MAIL-10차시-동아리활동계획.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "MAIL-10차시-동아리활동계획"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f9a49b82e7056147",
+    "type": "split",
+    "children": [
+      {
+        "id": "93364648c9e38c32",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "458ae0684f219632",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "cd0f3f5002703671",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "7265fa4232baea8d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "fcb3fd084cbc28f2",
+    "type": "split",
+    "children": [
+      {
+        "id": "72ba8c506bf67845",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "41e6efb71069e95f",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "MAIL-10차시-동아리활동계획.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for MAIL-10차시-동아리활동계획"
+            }
+          },
+          {
+            "id": "31dfd16e410d10e2",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "MAIL-10차시-동아리활동계획.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from MAIL-10차시-동아리활동계획"
+            }
+          },
+          {
+            "id": "4a5a0b57eabdb78f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "01d4399ff3bd5fe9",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "1c041a1f27c821b3",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "MAIL-10차시-동아리활동계획.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of MAIL-10차시-동아리활동계획"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "37048424e566ac0a",
+  "lastOpenFiles": [
+    "MAIL-동아리-활동계획서.md",
+    "MAIL-월별-활동계획.md",
+    "MAIL-10차시-동아리활동계획.md",
+    "산출물-규격/부록-수업촬영동의서-가정통신문.md",
+    "산출물-규격/03-소감문-및-개선안-템플릿.md",
+    "산출물-규격/README.md",
+    "산출물-규격/부록-학부모동의서-양식.md",
+    "산출물-규격/부록-학생촬영동의서-양식.md",
+    "산출물-규격/02-수업수행-증거자료-수집양식.md",
+    "산출물-규격/01-2차시-수업지도안-템플릿.md",
+    "산출물-규격"
+  ]
+}
