@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>배로 불어나는 세계: 등비수열 실험실</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">MAIL 수학 탐구 웹앱</p>
+      <h1>배로 불어나는 세계: 등비수열 실험실</h1>
+      <p class="lead">초항과 공비를 직접 바꾸며 표, 그래프, 미션, 예측 활동으로 등비수열의 규칙을 발견합니다.</p>
+    </div>
+    <div class="hero-actions" aria-label="앱 도구">
+      <button id="largeTextBtn" class="secondary" type="button">큰 글씨 켜기</button>
+      <button id="copyResultBtn" type="button">결과 복사</button>
+    </div>
+  </header>
+
+  <nav class="mode-tabs" aria-label="학습 모드">
+    <a href="#lab">실험실</a>
+    <a href="#mission">미션</a>
+    <a href="#prediction">예측</a>
+    <a href="#log">탐구 로그</a>
+  </nav>
+
+  <main class="app-shell">
+    <aside id="lab" class="panel controls-panel">
+      <div class="section-title">
+        <span>1</span>
+        <div>
+          <h2>값 조작하기</h2>
+          <p>슬라이더나 입력창으로 수열을 바꿔 보세요.</p>
+        </div>
+      </div>
+
+      <label class="control-row" for="firstTerm">
+        <span>초항 a₁</span>
+        <output id="firstTermOut">2</output>
+      </label>
+      <input id="firstTerm" type="range" min="-20" max="100" step="1" value="2" />
+      <input id="firstTermNumber" class="number-input" type="number" min="-100000" max="100000" step="1" value="2" aria-label="초항 직접 입력" />
+
+      <label class="control-row" for="ratio">
+        <span>공비 r</span>
+        <output id="ratioOut">2</output>
+      </label>
+      <input id="ratio" type="range" min="-3" max="5" step="0.1" value="2" />
+      <input id="ratioNumber" class="number-input" type="number" min="-10" max="10" step="0.1" value="2" aria-label="공비 직접 입력" />
+
+      <label class="control-row" for="termCount">
+        <span>항의 개수 n</span>
+        <output id="termCountOut">10</output>
+      </label>
+      <input id="termCount" type="range" min="3" max="20" step="1" value="10" />
+
+      <label class="select-label" for="scenario">시나리오</label>
+      <select id="scenario">
+        <option value="allowance">용돈 불리기</option>
+        <option value="cells">세포 분열</option>
+        <option value="views">조회수 증가</option>
+        <option value="discount">할인율</option>
+        <option value="halfLife">반감기</option>
+        <option value="rumor">소문 확산</option>
+      </select>
+
+      <article class="formula-card" aria-live="polite">
+        <p>일반항</p>
+        <strong id="formulaText">aₙ = 2 × 2ⁿ⁻¹</strong>
+        <small id="patternText">이전 항에 2을/를 곱합니다.</small>
+      </article>
+    </aside>
+
+    <section class="main-grid">
+      <section class="panel story-card" aria-live="polite">
+        <div class="section-title compact">
+          <span>2</span>
+          <h2>스토리 결과</h2>
+        </div>
+        <p id="storyText"></p>
+        <div class="insight-strip" id="insightText"></div>
+      </section>
+
+      <section class="panel graph-panel">
+        <div class="panel-header">
+          <div class="section-title compact">
+            <span>3</span>
+            <h2>그래프로 관찰하기</h2>
+          </div>
+          <p id="graphNote">색과 모양, 설명을 함께 확인하세요.</p>
+        </div>
+        <div class="chart-wrap">
+          <svg id="barChart" role="img" aria-label="항별 크기를 비교하는 막대그래프"></svg>
+          <svg id="lineChart" role="img" aria-label="항의 변화 추세를 보여주는 점그래프와 선그래프"></svg>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="section-title compact">
+          <span>4</span>
+          <h2>수열 표</h2>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>n</th><th>aₙ</th><th>이전 항과의 관계</th></tr>
+            </thead>
+            <tbody id="sequenceTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="mission" class="panel mission-panel">
+        <div class="section-title compact">
+          <span>5</span>
+          <h2>미션 모드</h2>
+        </div>
+        <div id="missionList" class="mission-list"></div>
+      </section>
+
+      <section id="prediction" class="panel prediction-panel">
+        <div class="section-title compact">
+          <span>6</span>
+          <h2>예측 후 확인</h2>
+        </div>
+        <div class="prediction-form">
+          <label for="targetTerm">예측할 항</label>
+          <select id="targetTerm"></select>
+          <label for="predictionInput">내 예측값</label>
+          <input id="predictionInput" type="number" step="any" placeholder="예: 64" />
+          <label for="ruleMemo">내가 사용한 규칙</label>
+          <textarea id="ruleMemo" rows="3" placeholder="예: 이전 항에 2를 계속 곱했다."></textarea>
+          <button id="checkPredictionBtn" type="button">정답 확인</button>
+        </div>
+        <div id="predictionResult" class="feedback" aria-live="polite">먼저 값을 예측해 보세요.</div>
+      </section>
+
+      <section class="panel questions-panel">
+        <div class="section-title compact">
+          <span>7</span>
+          <h2>탐구 질문</h2>
+        </div>
+        <ul>
+          <li>공비가 2일 때와 3일 때, 10번째 항은 얼마나 차이가 날까요?</li>
+          <li>공비가 1보다 크면 그래프는 어떤 모양이 되나요?</li>
+          <li>공비가 0과 1 사이이면 값은 어떻게 변하나요?</li>
+          <li>공비가 음수이면 항의 부호와 그래프는 어떻게 달라지나요?</li>
+          <li>같은 목표값에 도달하는 서로 다른 초항과 공비 조합을 만들 수 있나요?</li>
+        </ul>
+      </section>
+
+      <section id="log" class="panel log-panel">
+        <div class="panel-header">
+          <div class="section-title compact">
+            <span>8</span>
+            <h2>탐구 로그</h2>
+          </div>
+          <div class="button-row">
+            <button id="downloadJsonBtn" class="secondary" type="button">JSON 저장</button>
+            <button id="downloadCsvBtn" class="secondary" type="button">CSV 저장</button>
+            <button id="clearLogBtn" class="danger" type="button">로그 지우기</button>
+          </div>
+        </div>
+        <p class="privacy-note">이 앱은 이름이나 학번을 저장하지 않습니다. 브라우저 안에 익명 활동 기록만 보관합니다.</p>
+        <ol id="logList" class="log-list"></ol>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>수업 목표: 공식을 외우기 전에 조작, 예측, 확인, 설명으로 등비수열의 규칙을 발견하기</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
