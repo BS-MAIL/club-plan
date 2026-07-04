@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, MouseEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -218,6 +218,19 @@ type SimilarRubricDraft = {
   sourceReason: string;
 } | null;
 
+type AnswerMagnifier = {
+  visible: boolean;
+  x: number;
+  y: number;
+  backgroundX: number;
+  backgroundY: number;
+  backgroundWidth: number;
+  backgroundHeight: number;
+};
+
+const ANSWER_MAGNIFIER_SIZE = 168;
+const ANSWER_MAGNIFIER_ZOOM = 2.35;
+
 export default function Home() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExamKey, setSelectedExamKey] = useState<string>("");
@@ -262,6 +275,7 @@ export default function Home() {
   const [formulaRecognitionDraft, setFormulaRecognitionDraft] = useState(true);
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
   const [absenceDraftStudentIds, setAbsenceDraftStudentIds] = useState<number[]>([]);
+  const [answerMagnifier, setAnswerMagnifier] = useState<AnswerMagnifier>({ visible: false, x: 0, y: 0, backgroundX: 0, backgroundY: 0, backgroundWidth: 0, backgroundHeight: 0 });
   const imageRef = useRef<HTMLImageElement | null>(null);
 
   const examGroups = useMemo(() => groupExamsByName(exams), [exams]);
@@ -1177,6 +1191,26 @@ export default function Home() {
     chooseResult(submission.submission_id, questionId);
   }
 
+  function updateAnswerMagnifier(event: PointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+    const y = Math.max(0, Math.min(event.clientY - rect.top, rect.height));
+    const lensRadius = ANSWER_MAGNIFIER_SIZE / 2;
+    setAnswerMagnifier({
+      visible: true,
+      x,
+      y,
+      backgroundX: lensRadius - x * ANSWER_MAGNIFIER_ZOOM,
+      backgroundY: lensRadius - y * ANSWER_MAGNIFIER_ZOOM,
+      backgroundWidth: rect.width * ANSWER_MAGNIFIER_ZOOM,
+      backgroundHeight: rect.height * ANSWER_MAGNIFIER_ZOOM,
+    });
+  }
+
+  function hideAnswerMagnifier() {
+    setAnswerMagnifier((value) => ({ ...value, visible: false }));
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -1754,8 +1788,18 @@ export default function Home() {
               </div>
               <div className="answer-review-layout">
                 {!selectedResultPreviewUrl ? <p className="notice">이 문항의 답안 영역이 저장되어 있지 않습니다.</p> : (
-                  <div className={`result-preview-frame answer-crop-frame ${selectedResultQuestion.deductions.length > 0 ? "has-deduction" : ""} ${selectedResultQuestion.ocr_needs_review ? "has-ocr-risk" : ""} ${selectedResultQuestion.similar_answer_review ? "has-similar" : ""}`}>
+                  <div className="answer-preview-column">
+                  <div className={`result-preview-frame answer-crop-frame ${selectedResultQuestion.deductions.length > 0 ? "has-deduction" : ""} ${selectedResultQuestion.ocr_needs_review ? "has-ocr-risk" : ""} ${selectedResultQuestion.similar_answer_review ? "has-similar" : ""}`} onPointerEnter={updateAnswerMagnifier} onPointerMove={updateAnswerMagnifier} onPointerLeave={hideAnswerMagnifier} onPointerCancel={hideAnswerMagnifier}>
                     <img src={selectedResultPreviewUrl} alt="학생 문항 답안 미리보기" draggable={false} />
+                    {answerMagnifier.visible && <div className="answer-magnifier" style={{
+                      left: answerMagnifier.x,
+                      top: answerMagnifier.y,
+                      width: ANSWER_MAGNIFIER_SIZE,
+                      height: ANSWER_MAGNIFIER_SIZE,
+                      backgroundImage: `url(${selectedResultPreviewUrl})`,
+                      backgroundPosition: `${answerMagnifier.backgroundX}px ${answerMagnifier.backgroundY}px`,
+                      backgroundSize: `${answerMagnifier.backgroundWidth}px ${answerMagnifier.backgroundHeight}px`,
+                    }} />}
                     <div className="crop-status-overlay">
                       {selectedResultFallbackAnnotations.filter((annotation) => annotation.annotation_type !== "ocr").map((annotation, index) => (
                         <span className={`pill ${annotation.annotation_type === "ocr" ? "warning-pill" : "danger-pill"}`} key={`fallback-${index}`}>{annotation.label || annotation.reason}</span>
@@ -1771,6 +1815,8 @@ export default function Home() {
                         <span>{annotation.label || annotation.evidence_text}</span>
                       </div>
                     ))}
+                  </div>
+                  <p className="magnifier-hint">이미지 위에 커서를 올리면 해당 부분이 확대됩니다.</p>
                   </div>
                 )}
                 <div className="overlay-detail">
