@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="삼각함수로 가상 카페거리의 주말 보행 혼잡을 예측한 학생 결과물 예시">
+  <title>주말 거리 흐름 보고서 | 모퉁이 카페거리</title>
+  <style>
+    :root {
+      --ink: #172126;
+      --muted: #5c686a;
+      --paper: #f2eddf;
+      --paper-light: #faf7ee;
+      --night: #12323a;
+      --night-2: #1b4650;
+      --signal: #f25c35;
+      --signal-soft: #ffd5c4;
+      --lime: #c9dc68;
+      --line: rgba(23, 33, 38, 0.18);
+      --shadow: 0 24px 70px rgba(31, 45, 44, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 5%, rgba(201, 220, 104, 0.35), transparent 26rem),
+        linear-gradient(90deg, rgba(18, 50, 58, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(18, 50, 58, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 32px 32px, 32px 32px, auto;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      line-height: 1.65;
+      word-break: keep-all;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 72px;
+    }
+
+    .masthead {
+      position: relative;
+      min-height: 520px;
+      overflow: hidden;
+      color: #fff8e9;
+      background: var(--night);
+      border-radius: 3px 3px 44px 3px;
+      box-shadow: var(--shadow);
+      isolation: isolate;
+    }
+
+    .masthead::before {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      content: "";
+      background:
+        linear-gradient(118deg, transparent 52%, rgba(201, 220, 104, 0.13) 52%, rgba(201, 220, 104, 0.13) 53%, transparent 53%),
+        repeating-linear-gradient(0deg, transparent 0 43px, rgba(255, 255, 255, 0.045) 43px 44px);
+    }
+
+    .masthead::after {
+      position: absolute;
+      right: -90px;
+      bottom: -140px;
+      z-index: -1;
+      width: 440px;
+      height: 440px;
+      content: "";
+      border: 74px solid var(--signal);
+      border-radius: 50%;
+      opacity: 0.9;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 22px 30px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+    }
+
+    .status {
+      display: inline-flex;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .status::before {
+      width: 9px;
+      height: 9px;
+      content: "";
+      background: var(--lime);
+      border-radius: 50%;
+      box-shadow: 0 0 0 5px rgba(201, 220, 104, 0.14);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(250px, 0.55fr);
+      gap: 50px;
+      align-items: end;
+      padding: 68px 7% 64px;
+    }
+
+    .kicker,
+    .section-label {
+      margin: 0 0 16px;
+      color: var(--signal);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 740px;
+      margin-bottom: 25px;
+      font-family: Georgia, "Batang", serif;
+      font-size: clamp(3.2rem, 8vw, 6.8rem);
+      font-weight: 500;
+      line-height: 0.94;
+      letter-spacing: -0.07em;
+    }
+
+    h1 span {
+      display: block;
+      margin-top: 16px;
+      color: var(--lime);
+      font-family: "Malgun Gothic", sans-serif;
+      font-size: 0.18em;
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: 0.2em;
+    }
+
+    .hero-copy {
+      max-width: 620px;
+      margin-bottom: 0;
+      color: rgba(255, 248, 233, 0.76);
+      font-size: 1.02rem;
+    }
+
+    .site-card {
+      position: relative;
+      padding: 25px;
+      color: var(--ink);
+      background: var(--paper-light);
+      transform: rotate(1.7deg);
+      box-shadow: 14px 15px 0 rgba(0, 0, 0, 0.16);
+    }
+
+    .site-card::before {
+      position: absolute;
+      top: -11px;
+      left: 50%;
+      width: 90px;
+      height: 22px;
+      content: "";
+      background: rgba(201, 220, 104, 0.82);
+      transform: translateX(-50%) rotate(-2deg);
+    }
+
+    .site-card strong {
+      display: block;
+      margin-bottom: 18px;
+      font-family: Georgia, "Batang", serif;
+      font-size: 1.45rem;
+      line-height: 1.3;
+    }
+
+    .site-card dl {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 9px;
+      margin: 0;
+      font-size: 0.82rem;
+    }
+
+    .site-card dt {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .site-card dd {
+      margin: 0;
+      font-weight: 800;
+    }
+
+    main {
+      padding-top: 86px;
+    }
+
+    section {
+      margin-bottom: 104px;
+    }
+
+    .intro-grid,
+    .method-grid {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: clamp(34px, 7vw, 96px);
+    }
+
+    h2 {
+      margin-bottom: 22px;
+      font-family: Georgia, "Batang", serif;
+      font-size: clamp(2rem, 4.5vw, 3.7rem);
+      font-weight: 500;
+      line-height: 1.12;
+      letter-spacing: -0.055em;
+    }
+
+    .lead {
+      color: #374548;
+      font-size: 1.13rem;
+      line-height: 1.85;
+    }
+
+    .question-box {
+      align-self: start;
+      padding: 28px 30px;
+      background: var(--signal);
+      color: #fffaf0;
+      box-shadow: 10px 10px 0 var(--night);
+    }
+
+    .question-box small {
+      display: block;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+    }
+
+    .question-box p {
+      margin: 0;
+      font-family: Georgia, "Batang", serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .model-band {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 28px;
+      align-items: center;
+      margin: 44px 0 28px;
+      padding: 25px 30px;
+      color: white;
+      background: var(--night);
+      border-left: 9px solid var(--lime);
+    }
+
+    .formula {
+      overflow-wrap: anywhere;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.45rem, 3.5vw, 2.65rem);
+      line-height: 1.25;
+    }
+
+    .formula-note {
+      max-width: 285px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.8rem;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+
+    .metric {
+      padding: 20px 22px;
+      background: rgba(250, 247, 238, 0.72);
+      border: 1px solid var(--line);
+    }
+
+    .metric b {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.8rem;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .chart-shell {
+      position: relative;
+      padding: 28px 26px 18px;
+      overflow: hidden;
+      background: var(--paper-light);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .chart-shell::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 7px;
+      content: "";
+      background: linear-gradient(90deg, var(--signal) 0 31%, var(--lime) 31% 48%, var(--night) 48%);
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: end;
+      margin: 8px 10px 22px;
+    }
+
+    .chart-head h3 {
+      margin-bottom: 4px;
+      font-family: Georgia, "Batang", serif;
+      font-size: 1.5rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 20px;
+      height: 3px;
+      margin-right: 6px;
+      vertical-align: middle;
+      background: var(--signal);
+    }
+
+    .legend .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--night);
+      border-radius: 50%;
+    }
+
+    .chart-scroll {
+      overflow-x: auto;
+      scrollbar-color: var(--signal) transparent;
+    }
+
+    .chart {
+      display: block;
+      width: 100%;
+      min-width: 720px;
+      height: auto;
+    }
+
+    .chart text {
+      font-family: "Malgun Gothic", sans-serif;
+    }
+
+    .chart-caption {
+      margin: 14px 10px 0;
+      color: var(--muted);
+      font-size: 0.79rem;
+    }
+
+    .data-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(250px, 0.55fr);
+      gap: 28px;
+      margin-top: 35px;
+      align-items: start;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-top: 3px solid var(--night);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(250, 247, 238, 0.58);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    th,
+    td {
+      min-width: 68px;
+      padding: 13px 9px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      min-width: 96px;
+      text-align: left;
+      background: var(--paper-light);
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    tbody tr:last-child td {
+      color: var(--signal);
+      font-weight: 800;
+    }
+
+    .danger-card {
+      position: relative;
+      padding: 28px;
+      color: white;
+      background: var(--signal);
+    }
+
+    .danger-card::after {
+      position: absolute;
+      right: 17px;
+      top: 16px;
+      width: 13px;
+      height: 13px;
+      content: "";
+      background: var(--lime);
+      border: 5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+    }
+
+    .danger-card span {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+    }
+
+    .danger-card strong {
+      display: block;
+      margin: 20px 0 12px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.35rem, 5vw, 3.7rem);
+      line-height: 0.95;
+      letter-spacing: -0.055em;
+    }
+
+    .danger-card p {
+      margin-bottom: 0;
+      font-size: 0.82rem;
+      opacity: 0.85;
+    }
+
+    .action-section {
+      padding: clamp(34px, 6vw, 70px);
+      color: #fff8e9;
+      background: var(--night);
+      border-radius: 0 42px 0 0;
+    }
+
+    .action-section .section-label {
+      color: var(--lime);
+    }
+
+    .action-head {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 60px;
+      margin-bottom: 40px;
+    }
+
+    .action-head p {
+      color: rgba(255, 248, 233, 0.68);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: rgba(255, 255, 255, 0.17);
+      border: 1px solid rgba(255, 255, 255, 0.17);
+    }
+
+    .action {
+      min-height: 230px;
+      padding: 27px;
+      background: var(--night);
+    }
+
+    .action .number {
+      color: var(--signal);
+      font-family: Georgia, serif;
+      font-size: 2.3rem;
+      font-style: italic;
+    }
+
+    .action h3 {
+      margin: 22px 0 12px;
+      font-size: 1rem;
+    }
+
+    .action p {
+      margin: 0;
+      color: rgba(255, 248, 233, 0.62);
+      font-size: 0.82rem;
+    }
+
+    .method-grid > div:first-child {
+      position: relative;
+      padding-left: 27px;
+      border-left: 4px solid var(--signal);
+    }
+
+    .steps {
+      display: grid;
+      gap: 14px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .steps li {
+      position: relative;
+      padding: 17px 18px 17px 57px;
+      background: rgba(250, 247, 238, 0.65);
+      border-bottom: 1px solid var(--line);
+      counter-increment: step;
+    }
+
+    .steps li::before {
+      position: absolute;
+      left: 18px;
+      top: 16px;
+      color: var(--signal);
+      content: "0" counter(step);
+      font-family: Georgia, serif;
+      font-weight: 700;
+    }
+
+    .steps b {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .steps span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .limits {
+      margin-top: 30px;
+      padding: 24px;
+      background: var(--signal-soft);
+      border: 1px solid rgba(242, 92, 53, 0.22);
+    }
+
+    .limits h3 {
+      margin-bottom: 8px;
+      font-size: 0.94rem;
+    }
+
+    .limits p {
+      margin: 0;
+      color: #6e3d31;
+      font-size: 0.84rem;
+    }
+
+    .reflection {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 30px;
+      align-items: center;
+      padding: 30px 34px;
+      background: var(--lime);
+      transform: rotate(-0.35deg);
+    }
+
+    .reflection strong {
+      font-family: Georgia, serif;
+      font-size: 1.2rem;
+      white-space: nowrap;
+    }
+
+    .reflection p {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 820px) {
+      .page {
+        width: min(100% - 24px, 1180px);
+        padding-top: 12px;
+      }
+
+      .masthead {
+        min-height: auto;
+      }
+
+      .hero-grid,
+      .intro-grid,
+      .method-grid,
+      .action-head,
+      .data-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-grid {
+        gap: 45px;
+        padding: 58px 28px 70px;
+      }
+
+      .site-card {
+        width: min(100%, 340px);
+      }
+
+      .model-band {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .action {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topline {
+        padding: 17px 20px;
+        font-size: 0.65rem;
+      }
+
+      .topline span:last-child {
+        display: none;
+      }
+
+      h1 {
+        font-size: clamp(2.8rem, 17vw, 4.4rem);
+      }
+
+      main {
+        padding-top: 65px;
+      }
+
+      section {
+        margin-bottom: 75px;
+      }
+
+      .metric-row {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-shell {
+        margin-inline: -6px;
+        padding-inline: 12px;
+      }
+
+      .chart-head {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .reflection {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      footer {
+        flex-direction: column;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .masthead {
+        animation: reveal 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+
+      .hero-grid > * {
+        animation: rise 0.7s 0.18s ease-out both;
+      }
+
+      .hero-grid > :last-child {
+        animation-delay: 0.34s;
+      }
+
+      @keyframes reveal {
+        from { opacity: 0; clip-path: inset(0 0 100% 0); }
+        to { opacity: 1; clip-path: inset(0); }
+      }
+
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(18px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+
+      .masthead,
+      .chart-shell {
+        box-shadow: none;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="topline">
+        <span class="status">WEEKEND STREET FLOW REPORT</span>
+        <span>MODEL STUDY 02 / 2026.05.16</span>
+      </div>
+      <div class="hero-grid">
+        <div>
+          <p class="kicker">Urban rhythm, measured</p>
+          <h1>Street<br>Flow.<span>모퉁이 카페거리 주말 혼잡 예측</span></h1>
+          <p class="hero-copy">사람의 흐름에도 반복되는 리듬이 있을까? 토요일 시간대별 보행량을 관찰하고, 삼각함수 그래프로 가장 붐비는 순간을 예측했다.</p>
+        </div>
+        <aside class="site-card" aria-label="조사 장소 정보">
+          <strong>가상 도시<br>모퉁이 카페거리</strong>
+          <dl>
+            <dt>관찰 구간</dt><dd>북문 - 작은광장 180 m</dd>
+            <dt>관찰일</dt><dd>맑은 토요일</dd>
+            <dt>측정 단위</dt><dd>시간당 보행자 수</dd>
+            <dt>혼잡 기준</dt><dd>210명 이상</dd>
+          </dl>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro-grid" aria-labelledby="problem-title">
+        <div>
+          <p class="section-label">01 / Problem</p>
+          <h2 id="problem-title">좁은 보도에<br>점심 인파가 겹친다.</h2>
+        </div>
+        <div>
+          <p class="lead">모퉁이 카페거리는 오후가 되면 대기 줄, 이동 보행자, 배달 자전거가 폭 3 m 보도에 동시에 모인다. 상인회가 안전요원을 언제 배치해야 하는지 결정할 수 있도록, 관찰값의 주기적 변화를 삼각함수로 설명하고 <strong>보행자 210명 이상인 위험 시간</strong>을 찾는다.</p>
+          <div class="question-box">
+            <small>CORE QUESTION</small>
+            <p>“관찰하지 않은 시각의 혼잡도까지 그래프로 예측할 수 있을까?”</p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="model-title">
+        <p class="section-label">02 / Model &amp; Evidence</p>
+        <h2 id="model-title">거리의 리듬을<br>하나의 곡선으로.</h2>
+
+        <div class="model-band">
+          <div class="formula"><i>y</i> = 90 sin((<span aria-label="파이">&pi;</span>/4)(<i>x</i> - 12.5)) + 150</div>
+          <p class="formula-note"><i>x</i>: 시각(24시간제), <i>y</i>: 시간당 보행자 수. 관찰 범위 11:00-18:00에서만 해석한다.</p>
+        </div>
+
+        <div class="metric-row" aria-label="모델 핵심 수치">
+          <div class="metric"><b>150</b><span>중심선 / 평균 흐름</span></div>
+          <div class="metric"><b>90</b><span>진폭 / 최대 변화폭</span></div>
+          <div class="metric"><b>8 h</b><span>주기 / 한 흐름의 길이</span></div>
+        </div>
+
+        <figure class="chart-shell">
+          <div class="chart-head">
+            <div>
+              <h3>시간대별 보행 흐름</h3>
+              <div class="legend" aria-label="그래프 범례">
+                <span><i></i>예측 곡선</span>
+                <span><i class="dot"></i>관찰값</span>
+              </div>
+            </div>
+            <span class="section-label">people / hour</span>
+          </div>
+          <div class="chart-scroll" tabindex="0" aria-label="그래프가 넓으면 좌우로 이동할 수 있습니다">
+            <svg class="chart" viewBox="0 0 900 430" role="img" aria-labelledby="chart-title chart-desc">
+              <title id="chart-title">모퉁이 카페거리 시간대별 보행자 수</title>
+              <desc id="chart-desc">오전 11시부터 오후 6시까지 관찰값과 사인함수 예측 곡선을 비교한 그래프. 오후 2시 30분 무렵 240명으로 최고점에 이른다.</desc>
+              <defs>
+                <pattern id="grid" width="84.44" height="59.26" patternUnits="userSpaceOnUse">
+                  <path d="M 84.44 0 L 0 0 0 59.26" fill="none" stroke="#172126" stroke-opacity="0.09" stroke-width="1"/>
+                </pattern>
+                <filter id="curve-shadow" x="-10%" y="-20%" width="120%" height="140%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#f25c35" flood-opacity="0.2"/>
+                </filter>
+              </defs>
+
+              <rect x="90" y="40" width="760" height="320" fill="url(#grid)"/>
+              <rect x="379.6" y="40" width="180.7" height="320" fill="#f25c35" opacity="0.09"/>
+              <line x1="90" y1="360" x2="850" y2="360" stroke="#172126" stroke-width="2"/>
+              <line x1="90" y1="40" x2="90" y2="360" stroke="#172126" stroke-width="2"/>
+              <line x1="90" y1="182.2" x2="850" y2="182.2" stroke="#12323a" stroke-opacity="0.4" stroke-dasharray="7 7"/>
+              <line x1="90" y1="111.1" x2="850" y2="111.1" stroke="#f25c35" stroke-width="2" stroke-dasharray="8 7"/>
+
+              <g fill="#5c686a" font-size="12">
+                <text x="72" y="364" text-anchor="end">0</text>
+                <text x="72" y="304.7" text-anchor="end">50</text>
+                <text x="72" y="245.4" text-anchor="end">100</text>
+                <text x="72" y="186.2" text-anchor="end">150</text>
+                <text x="72" y="126.9" text-anchor="end">200</text>
+                <text x="72" y="67.7" text-anchor="end">250</text>
+                <text x="90" y="389" text-anchor="middle">10시</text>
+                <text x="174.4" y="389" text-anchor="middle">11시</text>
+                <text x="258.9" y="389" text-anchor="middle">12시</text>
+                <text x="343.3" y="389" text-anchor="middle">13시</text>
+                <text x="427.8" y="389" text-anchor="middle">14시</text>
+                <text x="512.2" y="389" text-anchor="middle">15시</text>
+                <text x="596.7" y="389" text-anchor="middle">16시</text>
+                <text x="681.1" y="389" text-anchor="middle">17시</text>
+                <text x="765.6" y="389" text-anchor="middle">18시</text>
+                <text x="850" y="389" text-anchor="middle">19시</text>
+              </g>
+
+              <text x="842" y="174" fill="#12323a" font-size="11" text-anchor="end">중심선 150명</text>
+              <text x="842" y="103" fill="#f25c35" font-size="11" font-weight="700" text-anchor="end">위험 기준 210명</text>
+              <text x="470" y="60" fill="#f25c35" font-size="11" font-weight="700" text-anchor="middle">예측 위험 구간</text>
+
+              <path id="prediction-curve" d="M90 280.8 C104.1 284.8 118.1 288.9 132.2 288.9 C188.5 288.9 230.7 238.1 301.1 182.2 C371.5 126.4 413.7 75.6 470 75.6 C526.3 75.6 568.5 126.4 638.9 182.2 C709.3 238.1 751.5 288.9 807.8 288.9 C821.9 288.9 835.9 284.8 850 280.8" fill="none" stroke="#f25c35" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#curve-shadow)"/>
+
+              <g fill="#12323a" stroke="#faf7ee" stroke-width="4">
+                <circle cx="174.4" cy="274.7" r="7"><title>11시 관찰값 72명</title></circle>
+                <circle cx="258.9" cy="216.6" r="7"><title>12시 관찰값 121명</title></circle>
+                <circle cx="343.3" cy="149.0" r="7"><title>13시 관찰값 178명</title></circle>
+                <circle cx="427.8" cy="89.8" r="7"><title>14시 관찰값 228명</title></circle>
+                <circle cx="512.2" cy="79.1" r="7"><title>15시 관찰값 237명</title></circle>
+                <circle cx="596.7" cy="134.8" r="7"><title>16시 관찰값 190명</title></circle>
+                <circle cx="681.1" cy="215.4" r="7"><title>17시 관찰값 122명</title></circle>
+                <circle cx="765.6" cy="278.2" r="7"><title>18시 관찰값 69명</title></circle>
+              </g>
+
+              <g>
+                <line x1="470" y1="75.6" x2="528" y2="49" stroke="#12323a" stroke-width="1.5"/>
+                <rect x="528" y="31" width="128" height="38" rx="2" fill="#12323a"/>
+                <text x="592" y="47" fill="#fff8e9" font-size="10" text-anchor="middle">최고 예측값 240명</text>
+                <text x="592" y="61" fill="#c9dc68" font-size="10" font-weight="700" text-anchor="middle">14:30</text>
+              </g>
+              <text x="470" y="417" fill="#5c686a" font-size="11" text-anchor="middle">시간 x (24시간제)</text>
+              <text x="19" y="200" fill="#5c686a" font-size="11" text-anchor="middle" transform="rotate(-90 19 200)">보행자 수 y (명)</text>
+            </svg>
+          </div>
+          <figcaption class="chart-caption">점은 10분간 직접 계수한 값을 시간당 수치로 환산한 가상 관찰 자료이며, 선은 사인함수 모델의 예측이다.</figcaption>
+        </figure>
+
+        <div class="data-layout">
+          <div class="table-wrap">
+            <table aria-label="시간대별 관찰값과 모델 예측값">
+              <thead>
+                <tr><th scope="col">시각</th><th scope="col">11시</th><th scope="col">12시</th><th scope="col">13시</th><th scope="col">14시</th><th scope="col">15시</th><th scope="col">16시</th><th scope="col">17시</th><th scope="col">18시</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">관찰값</th><td>72</td><td>121</td><td>178</td><td>228</td><td>237</td><td>190</td><td>122</td><td>69</td></tr>
+                <tr><th scope="row">예측값</th><td>67</td><td>116</td><td>184</td><td>233</td><td>233</td><td>184</td><td>116</td><td>67</td></tr>
+                <tr><th scope="row">오차</th><td>5</td><td>5</td><td>-6</td><td>-5</td><td>4</td><td>6</td><td>6</td><td>2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="danger-card" aria-label="예측 위험 시간">
+            <span>PREDICTED DANGER WINDOW</span>
+            <strong>13:26<br>- 15:34</strong>
+            <p>모델값이 혼잡 기준 210명을 넘는 약 2시간 8분. 실제 운영에서는 앞뒤 15분을 더해 대응한다.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="action-section" aria-labelledby="action-title">
+        <div class="action-head">
+          <div>
+            <p class="section-label">03 / Street Action</p>
+            <h2 id="action-title">예측을 거리의<br>행동으로 바꾸기.</h2>
+          </div>
+          <p>혼잡을 완전히 없애기보다 가장 위험한 두 시간에 사람과 시설을 집중한다. 상인에게 무리한 영업 제한을 요구하지 않고, 보행 공간과 대기 흐름을 분리하는 현실적인 대응을 제안한다.</p>
+        </div>
+        <div class="actions">
+          <article class="action">
+            <span class="number">01</span>
+            <h3>안전요원 2명 집중 배치</h3>
+            <p>13:15-15:45에 북문과 작은광장에 한 명씩 배치해 역방향 보행과 자전거 진입을 조정한다.</p>
+          </article>
+          <article class="action">
+            <span class="number">02</span>
+            <h3>대기 줄을 골목 안쪽으로</h3>
+            <p>인기 매장 3곳에 이동식 바닥 표시를 두고, 주 보행선 1.5 m를 항상 비워 둔다.</p>
+          </article>
+          <article class="action">
+            <span class="number">03</span>
+            <h3>배달 진입 시간 분산</h3>
+            <p>14:00-15:30에는 남문 픽업존을 이용하도록 안내해 보행자와 자전거가 만나는 지점을 줄인다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="method-grid" aria-labelledby="method-title">
+        <div>
+          <p class="section-label">04 / Method &amp; Limits</p>
+          <h2 id="method-title">그래프는 현실의<br>축소 모형이다.</h2>
+          <p class="lead">모델의 값이 관찰값과 비슷하더라도, 계산에 포함되지 않은 날씨와 행사 같은 조건을 함께 읽어야 한다.</p>
+        </div>
+        <div>
+          <ol class="steps">
+            <li><b>관찰하고 환산하기</b><span>매시 정각 10분 동안 통과 인원을 세고 6을 곱해 시간당 인원으로 환산했다.</span></li>
+            <li><b>중심선과 진폭 정하기</b><span>최댓값 약 240, 최솟값 약 60의 중간인 150을 중심선으로, 차이의 절반인 90을 진폭으로 정했다.</span></li>
+            <li><b>주기와 평행이동 맞추기</b><span>최저점에서 다음 최저점까지를 8시간으로 보고, 최고점이 14:30에 오도록 그래프를 오른쪽으로 이동했다.</span></li>
+            <li><b>위험 구간 계산하기</b><span>y &gt; 210을 만족하는 x를 계산해 13.43 &lt; x &lt; 15.57, 즉 13:26-15:34로 해석했다.</span></li>
+          </ol>
+          <aside class="limits">
+            <h3>해석의 한계</h3>
+            <p>한 번의 맑은 토요일을 가정한 자료라 계절, 비, 축제, 신메뉴 행사 영향을 설명하지 못한다. 사인함수는 흐름을 매끄럽게 단순화하므로 갑작스러운 단체 방문도 놓친다. 최소 4주간 같은 방식으로 반복 측정한 뒤 계수를 다시 조정해야 한다.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section aria-labelledby="reflection-title">
+        <div class="reflection">
+          <strong id="reflection-title">AI USE NOTE</strong>
+          <p>AI에는 사인함수 식의 시간대별 예측값과 위험 구간 계산을 확인하도록 요청했다. 관찰 상황, 혼잡 기준, 해결 아이디어는 직접 정했으며, AI가 준 소수 값은 식에 다시 대입해 검산했다. AI의 답을 그대로 쓰기보다 계산 확인 도구로 제한해 사용했다.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>가상 학생 결과물 예시 / 삼각함수 그래프 모델링</span>
+      <span>FICTIONAL DATA - NOT FOR OPERATIONAL USE</span>
+    </footer>
+  </div>
+</body>
+</html>
