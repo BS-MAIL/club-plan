@@ -1,0 +1,529 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>대푯값 수업 교사용</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="made-by">Made by 승희T</div>
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-card">
+        <p class="eyebrow">REPRESENTATIVE VALUE LAB</p>
+        <div class="hero-title-row">
+          <h1>대푯값 탐정 교실</h1>
+          <div id="classQrBox" class="class-qr-box" hidden></div>
+        </div>
+        <p id="heroText">반을 선택하거나 새로 개설한 뒤 자료를 수집하고 게임을 진행합니다.</p>
+        <div class="row" id="navButtons"></div>
+      </div>
+      <div class="panel">
+        <h2>현재 위치</h2>
+        <div id="statusBox" class="stack"></div>
+      </div>
+    </section>
+
+    <section id="classScreen" class="screen">
+      <div class="grid">
+        <div class="panel">
+          <h2>새 반 개설</h2>
+          <form id="classForm" class="stack">
+            <label>반 이름<input id="className" placeholder="예: 1학년 3반, 3-2 통계수업"></label>
+            <button type="submit">반 만들기</button>
+          </form>
+        </div>
+        <div class="panel class-list-panel">
+          <h2>개설된 반</h2>
+          <div id="classList" class="class-card-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="entryScreen" class="screen" hidden>
+      <section class="teacher-entry-grid">
+        <div class="panel compact-panel entry-control-panel">
+          <h2>주제 입력</h2>
+          <form id="topicForm" class="compact-topic-form">
+            <label>주제 이름<input id="topicName" placeholder="예: 키, 하루 식사량, 등교 시간"></label>
+            <label>단위<input id="topicUnit" placeholder="예: cm, kg, 분, 회"></label>
+            <label class="check-row"><input id="allowText" type="checkbox"> 글자 답변 허용(최빈값 전용)</label>
+            <button type="submit">주제 추가</button>
+          </form>
+          <div class="topic-set-tools">
+            <label>목록 이름<input id="topicSetName" placeholder="예: 1단원 대푯값 활동"></label>
+            <button class="secondary" type="button" onclick="saveTopicSet()">현재 주제 목록 저장</button>
+            <label>저장된 목록<select id="topicSetSelect"></select></label>
+            <div class="row">
+              <button class="leaf mini-btn" type="button" onclick="applyTopicSet()">불러오기</button>
+              <button class="danger mini-btn" type="button" onclick="deleteTopicSet()">목록 삭제</button>
+            </div>
+          </div>
+          <button class="sun start-game-small" onclick="startGame()">대푯값 탐정 게임 시작</button>
+        </div>
+        <div class="panel compact-panel">
+          <h2>주제별 자료와 대푯값</h2>
+          <div id="topics" class="compact-teacher-topics"></div>
+        </div>
+        <div class="panel compact-panel">
+          <h2>학생 명단</h2>
+          <div id="studentRoster" class="compact-roster"></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="gameScreen" class="screen" hidden>
+      <section class="game-console">
+        <div class="game-main panel">
+          <button class="mega-random" id="randomBtn">랜덤 주제 뽑기</button>
+        </div>
+        <div class="panel game-side">
+          <h2>조 점수판</h2>
+          <div id="scoreboard" class="list"></div>
+          <button class="secondary" id="resetScoreBtn">점수 초기화</button>
+          <button class="danger" id="endGameBtn">게임 종료</button>
+          <details class="status-details">
+            <summary>조별 대표 제출 현황</summary>
+            <div id="predictionStatus" class="list"></div>
+          </details>
+        </div>
+      </section>
+    </section>
+  </main>
+  <div id="rouletteModal" class="modal-backdrop" hidden>
+    <div class="roulette-card">
+      <p class="eyebrow">TOPIC ROULETTE</p>
+      <h2>이번 주제는...</h2>
+      <div id="rouletteName" class="roulette-name">준비 중</div>
+      <div class="roulette-controls">
+        <div id="roundTimer" class="round-timer" hidden>01:30</div>
+        <button class="secondary roulette-pause" id="roundPauseBtn" onclick="toggleRoundPause()" hidden>일시정지</button>
+        <button class="leaf roulette-reveal" id="rouletteRevealBtn" onclick="revealAnswer()" hidden>정답 공개</button>
+      </div>
+      <button class="secondary roulette-close" onclick="rouletteModal.hidden = true">닫기</button>
+    </div>
+  </div>
+  <div id="resultModal" class="modal-backdrop" hidden>
+    <div class="modal-card result-card">
+      <div id="resultBox"></div>
+      <button onclick="resultModal.hidden = true">닫기</button>
+    </div>
+  </div>
+  <div id="countdownOverlay" class="countdown-overlay" hidden><span id="countdownNumber">3</span></div>
+  <div id="qrModal" class="modal-backdrop" hidden>
+    <div class="modal-card qr-modal-card">
+      <h2>학생 접속 QR코드</h2>
+      <img id="qrLargeImage" alt="확대된 학생 접속 QR코드">
+      <p id="qrLargeUrl" class="tiny"></p>
+      <button onclick="qrModal.hidden = true">닫기</button>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared.js"></script>
+  <script>
+    let screen = "class";
+    let roundTimerId = null;
+    let activeRoundEndsAt = null;
+    let autoRevealStarted = false;
+
+    classForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      socket.emit("teacher:create-class", { name: className.value }, (res) => {
+        if (!res.ok) return toast(res.message);
+        classForm.reset();
+        selectClass(res.classId, "entry");
+        toast("반을 개설했습니다.");
+      });
+    });
+
+    topicForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      socket.emit("teacher:add-topic", { classId: currentClassId, name: topicName.value, unit: topicUnit.value, allowText: allowText.checked }, (res) => {
+        if (!res.ok) return toast(res.message);
+        topicForm.reset();
+        toast("주제를 추가했습니다.");
+      });
+    });
+
+    randomBtn.addEventListener("click", spinTopicRoulette);
+    resetScoreBtn.addEventListener("click", () => confirm("점수를 초기화할까요?") && socket.emit("teacher:reset-scores", { classId: currentClassId }));
+    endGameBtn.addEventListener("click", endGame);
+
+    [rouletteModal, resultModal, qrModal].forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.hidden = true;
+      });
+      modal.firstElementChild?.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    function selectClass(classId, next = "entry") {
+      currentClassId = classId;
+      localStorage.setItem("rv-class-id", classId);
+      screen = next;
+      joinClass(classId);
+    }
+
+    function go(next) {
+      if (next !== "class" && !currentClassId) return toast("먼저 반을 선택하세요.");
+      screen = next;
+      render();
+    }
+
+    function startGame() {
+      if (!currentClassId) return toast("먼저 반을 선택하세요.");
+      socket.emit("teacher:start-game", { classId: currentClassId });
+      screen = "game";
+      render();
+    }
+
+    function endGame() {
+      if (!confirm("게임을 종료하고 학생들을 자료 입력 화면으로 돌려보낼까요?")) return;
+      socket.emit("teacher:end-game", { classId: currentClassId }, (res) => {
+        if (!res?.ok) return toast(res?.message || "게임 종료에 실패했습니다.");
+        rouletteModal.hidden = true;
+        resultModal.hidden = true;
+        countdownOverlay.hidden = true;
+        stopRoundTimer();
+        screen = "entry";
+        render();
+        toast("게임을 종료했습니다.");
+      });
+    }
+
+    function afterClassJoin() {
+      if (screen === "class") screen = "entry";
+    }
+
+    function onClassDeleted() {
+      screen = "class";
+      rouletteModal.hidden = true;
+      resultModal.hidden = true;
+      countdownOverlay.hidden = true;
+      stopRoundTimer();
+      toast("반이 삭제되었습니다.");
+    }
+
+    function deleteClass(classId, className) {
+      if (!confirm(`'${className}' 반을 삭제할까요? 학생 명단과 제출 자료도 함께 삭제됩니다.`)) return;
+      socket.emit("teacher:delete-class", { classId }, (res) => {
+        if (!res?.ok) return toast(res?.message || "반 삭제에 실패했습니다.");
+        if (currentClassId === classId) {
+          currentClassId = null;
+          localStorage.removeItem("rv-class-id");
+          state = { ...state, classId: null, classRoom: null };
+          screen = "class";
+        }
+        toast("반을 삭제했습니다.");
+      });
+    }
+
+    function renderNav() {
+      navButtons.innerHTML = `<button class="secondary" onclick="go('class')">반 선택</button><button class="secondary" onclick="go('entry')">자료 입력</button><button class="secondary" onclick="go('game')">게임 화면</button><span class="pill">학생: /student</span>`;
+      const klass = state.classRoom || currentClassSummary();
+      statusBox.innerHTML = klass ? `<span class="pill">선택한 반</span><h3>${klass.name}</h3><p>언제든 위 버튼으로 화면을 이동할 수 있습니다.</p>` : `<div class="empty">반을 선택하세요.</div>`;
+      renderClassQr(klass);
+    }
+
+    function studentJoinUrl() {
+      if (!currentClassId) return "";
+      const base = state.studentUrls?.[0] || `${window.location.origin}/student`;
+      const url = new URL(base);
+      url.searchParams.set("class", currentClassId);
+      return url.href;
+    }
+
+    function renderClassQr(klass) {
+      if (!klass || !currentClassId) {
+        classQrBox.hidden = true;
+        classQrBox.innerHTML = "";
+        return;
+      }
+      const url = studentJoinUrl();
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=128x128&margin=8&data=${encodeURIComponent(url)}`;
+      classQrBox.hidden = false;
+      classQrBox.innerHTML = `<button class="qr-zoom-btn" type="button" onclick="openQrModal()"><img src="${qrSrc}" alt="${klass.name} 학생 접속 QR코드"><span>학생 접속 QR 확대</span></button>`;
+    }
+
+    function openQrModal() {
+      const url = studentJoinUrl();
+      qrLargeImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=16&data=${encodeURIComponent(url)}`;
+      qrLargeUrl.textContent = url;
+      qrModal.hidden = false;
+    }
+
+    function showScreens() {
+      classScreen.hidden = screen !== "class";
+      entryScreen.hidden = screen !== "entry";
+      gameScreen.hidden = screen !== "game";
+    }
+
+    function predictionRows(topic) {
+      if (!topic.predictions.length) return `<div class="empty">아직 조별 대표 예측이 없습니다.</div>`;
+      return topic.predictions.map((p) => {
+        const entry = topic.entries.find((item) => item.id === p.entryId);
+        const diff = topic.stats && entry ? Math.abs(entry.value - topic.stats.representativeValue).toFixed(2) : "-";
+        return `<div class="list-item"><div><b>${p.team}</b> - ${entry ? `${entry.studentNumber}번 ${entry.studentName}` : "삭제된 학생"} <span class="tiny">${entry ? fmt(entry.value, topic.unit) : ""}</span><br><span class="tiny">${p.explanation || "설명 없음"}</span></div><b>차이 ${diff}</b></div>`;
+      }).join("");
+    }
+
+    function renderRound() {
+      const topic = selectedTopic();
+      if (!state.classRoom || !topic) {
+        roundBox.innerHTML = `<div class="empty">랜덤 주제를 뽑으면 여기에 표시됩니다.</div>`;
+        return;
+      }
+      const s = topic.stats;
+      const answer = state.classRoom.answerVisible && s ? `<div class="answer-box"><span class="pill">정답 공개</span><h3>${typeName(s.selectedType)}이 가장 적절한 대푯값</h3><div class="big-number">${fmt(s.representativeValue, topic.unit)}</div><p>${s.reason}</p></div>` : `<div class="empty">학생들이 조별 대표를 제출한 뒤 정답 공개를 누르세요.</div>`;
+      roundBox.innerHTML = `<div class="topic-card selected"><div class="topic-head"><div><span class="pill">선택됨</span><h2>${topic.name}</h2><p>${s ? s.reason : "자료를 더 입력하세요."}</p></div><b>${topic.entries.length}명 입력</b></div>${statHtml(topic)}<h3>조별 예측</h3><div class="list">${predictionRows(topic)}</div>${answer}</div>`;
+    }
+
+    function spinTopicRoulette() {
+      const topicsWithEntries = (state.classRoom?.topics || []).filter((topic) => topic.entries.length > 0);
+      const usedIds = new Set(state.classRoom?.usedTopicIds || []);
+      const available = topicsWithEntries.filter((topic) => !usedIds.has(topic.id));
+      if (!topicsWithEntries.length) return toast("입력된 자료가 있는 주제가 없습니다.");
+      if (!available.length) return toast("이번 게임에서 모든 주제를 이미 뽑았습니다. 점수 초기화 후 다시 시작하세요.");
+      socket.emit("teacher:roulette-start", { classId: currentClassId });
+      resultModal.hidden = true;
+      countdownOverlay.hidden = true;
+      autoRevealStarted = false;
+      stopRoundTimer();
+      rouletteModal.hidden = false;
+      rouletteRevealBtn.hidden = true;
+      roundPauseBtn.hidden = true;
+      let index = 0;
+      let delay = 45;
+      let rounds = 0;
+      const tick = () => {
+        rouletteName.textContent = available[index % available.length].name;
+        index += 1;
+        rounds += 1;
+        delay = Math.min(420, Math.floor(delay * 1.12 + 4));
+        if (rounds < 34) setTimeout(tick, delay);
+        else {
+          socket.emit("teacher:random-topic", { classId: currentClassId }, (res) => {
+            if (!res?.ok) {
+              rouletteModal.hidden = true;
+              return toast(res?.message || "주제를 뽑지 못했습니다.");
+            }
+            rouletteName.textContent = res.topicName;
+            rouletteRevealBtn.hidden = false;
+            roundPauseBtn.hidden = false;
+            roundPauseBtn.textContent = "일시정지";
+            startRoundTimer(res.roundEndsAt);
+            render();
+          });
+        }
+      };
+      tick();
+    }
+
+    function revealAnswer() {
+      if (autoRevealStarted) return;
+      stopRoundTimer(false, false);
+      startCountdownThenReveal();
+    }
+
+    function revealAnswerNow() {
+      stopRoundTimer();
+      socket.emit("teacher:reveal-answer", { classId: currentClassId }, (res) => {
+        if (!res?.ok) return toast(res?.message || "정답 공개에 실패했습니다.");
+        resultBox.innerHTML = answerResultHtml(res);
+        rouletteModal.hidden = true;
+        rouletteRevealBtn.hidden = true;
+        roundPauseBtn.hidden = true;
+        resultModal.hidden = false;
+      });
+    }
+
+    function toggleRoundPause() {
+      socket.emit("teacher:toggle-round-pause", { classId: currentClassId }, (res) => {
+        if (!res?.ok) return toast(res?.message || "타이머를 변경하지 못했습니다.");
+        if (res.paused) {
+          stopRoundTimer(false, true);
+          renderPausedTimer(res.roundRemainingMs);
+        } else {
+          roundPauseBtn.textContent = "일시정지";
+          startRoundTimer(res.roundEndsAt);
+        }
+      });
+    }
+
+    function timerText(ms) {
+      const remaining = Math.max(0, Math.ceil((ms || 0) / 1000));
+      const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const seconds = String(remaining % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    }
+
+    function renderPausedTimer(remainingMs) {
+      stopRoundTimer(false, true);
+      roundTimer.hidden = false;
+      roundTimer.textContent = timerText(remainingMs);
+      roundPauseBtn.hidden = false;
+      roundPauseBtn.textContent = "다시 시작";
+    }
+
+    function startRoundTimer(endsAt) {
+      if (activeRoundEndsAt === endsAt && roundTimerId) return;
+      stopRoundTimer();
+      if (!endsAt) return;
+      activeRoundEndsAt = endsAt;
+      roundTimer.hidden = false;
+      roundPauseBtn.hidden = false;
+      roundPauseBtn.textContent = "일시정지";
+      const tick = () => {
+        const remainingMs = Math.max(0, endsAt - Date.now());
+        roundTimer.textContent = timerText(remainingMs);
+        if (remainingMs <= 0) {
+          stopRoundTimer(false, false);
+          if (!autoRevealStarted && !state.classRoom?.answerVisible) startCountdownThenReveal();
+        }
+      };
+      tick();
+      roundTimerId = setInterval(tick, 250);
+    }
+
+    function stopRoundTimer(hide = true, clearActive = true) {
+      if (roundTimerId) clearInterval(roundTimerId);
+      roundTimerId = null;
+      if (clearActive) activeRoundEndsAt = null;
+      if (hide && typeof roundTimer !== "undefined") roundTimer.hidden = true;
+      if (hide && typeof roundPauseBtn !== "undefined") roundPauseBtn.hidden = true;
+    }
+
+    function startCountdownThenReveal() {
+      autoRevealStarted = true;
+      let n = 3;
+      countdownOverlay.hidden = false;
+      const tick = () => {
+        countdownNumber.textContent = n;
+        countdownNumber.classList.remove("pop-count");
+        void countdownNumber.offsetWidth;
+        countdownNumber.classList.add("pop-count");
+        if (n === 0) {
+          countdownOverlay.hidden = true;
+          revealAnswerNow();
+          return;
+        }
+        n -= 1;
+        setTimeout(tick, 900);
+      };
+      tick();
+    }
+
+    function renderTopicSets() {
+      const sets = state.topicSets || [];
+      const previousValue = topicSetSelect.value;
+      const nextKey = sets.map((set) => `${set.id}:${set.name}:${set.topics.length}`).join("|");
+      if (topicSetSelect.dataset.renderKey === nextKey) return;
+      topicSetSelect.dataset.renderKey = nextKey;
+      topicSetSelect.innerHTML = sets.length ? sets.map((set) => `<option value="${set.id}">${set.name} (${set.topics.length}개)</option>`).join("") : `<option value="">저장된 목록 없음</option>`;
+      if (sets.some((set) => set.id === previousValue)) topicSetSelect.value = previousValue;
+    }
+
+    function saveTopicSet() {
+      socket.emit("teacher:save-topic-set", { classId: currentClassId, name: topicSetName.value }, (res) => {
+        if (!res?.ok) return toast(res?.message || "목록 저장에 실패했습니다.");
+        topicSetName.value = "";
+        toast("주제 목록을 저장했습니다.");
+      });
+    }
+
+    function applyTopicSet() {
+      if (!topicSetSelect.value) return toast("불러올 목록을 선택하세요.");
+      socket.emit("teacher:apply-topic-set", { classId: currentClassId, setId: topicSetSelect.value }, (res) => toast(res?.ok ? `${res.count}개 주제를 불러왔습니다.` : res?.message || "목록 불러오기에 실패했습니다."));
+    }
+
+    function deleteTopicSet() {
+      if (!topicSetSelect.value) return toast("삭제할 목록을 선택하세요.");
+      if (!confirm("저장된 주제 목록을 삭제할까요?")) return;
+      socket.emit("teacher:delete-topic-set", { setId: topicSetSelect.value }, (res) => toast(res?.ok ? "저장된 목록을 삭제했습니다." : res?.message || "목록 삭제에 실패했습니다."));
+    }
+
+    function renderPredictionStatus() {
+      const topic = selectedTopic();
+      const teams = state.classRoom?.teams || [];
+      if (!topic) {
+        predictionStatus.innerHTML = `<div class="empty">주제를 뽑으면 제출 현황이 표시됩니다.</div>`;
+        return;
+      }
+      predictionStatus.innerHTML = teams.length ? teams.map((team) => {
+        const p = topic.predictions.find((item) => item.team === team);
+        if (!p) return `<div class="list-item"><b>${team}</b><span>미제출</span></div>`;
+        const entry = topic.entries.find((item) => item.id === p.entryId);
+        return `<div class="list-item"><div><b>${team}</b><br><span class="tiny">${entry ? `${entry.studentNumber}번 ${entry.studentName}` : "대표 없음"}</span></div><span>${p.confirmed ? "제출 완료" : `동의 ${p.approvals?.length || 0}명`}</span></div>`;
+      }).join("") : `<div class="empty">아직 조가 없습니다.</div>`;
+    }
+
+    function renderTopics() {
+      if (!state.classRoom) {
+        topics.innerHTML = `<div class="empty">먼저 반을 선택하세요.</div>`;
+        return;
+      }
+      topics.innerHTML = state.classRoom.topics.length ? state.classRoom.topics.map((topic) => {
+        const s = topic.stats;
+        const rep = s ? `${typeName(s.selectedType)} ${fmt(s.representativeValue, topic.unit)}` : "자료 대기";
+        const typeControl = s && !topic.allowText ? `<select class="mini-select" onchange="socket.emit('teacher:set-representative',{classId:currentClassId,topicId:'${topic.id}', type:this.value})"><option value="auto">자동</option><option value="mean" ${s.selectedType === "mean" ? "selected" : ""}>평균</option><option value="median" ${s.selectedType === "median" ? "selected" : ""}>중앙값</option><option value="mode" ${s.selectedType === "mode" ? "selected" : ""}>최빈값</option></select>` : `<span class="tiny">${topic.allowText ? "글자" : ""}</span>`;
+        return `<div class="teacher-topic-row"><div><b>${topic.name}</b> <span class="tiny">${topic.unit || ""}</span><br><span class="tiny">${topic.entries.length}명 입력 · ${rep}</span></div><div class="row">${typeControl}<button class="secondary mini-btn" onclick="socket.emit('teacher:remove-topic',{classId:currentClassId,topicId:'${topic.id}'})">삭제</button></div></div>`;
+      }).join("") : `<div class="empty">먼저 수업 주제를 추가하세요.</div>`;
+    }
+
+    function renderStudentRoster() {
+      const students = (state.classRoom?.students || []).slice().sort((a, b) => a.team.localeCompare(b.team, "ko") || Number(a.studentNumber) - Number(b.studentNumber) || a.studentName.localeCompare(b.studentName, "ko"));
+      if (!students.length) {
+        studentRoster.innerHTML = `<div class="empty">아직 입장한 학생이 없습니다.</div>`;
+        return;
+      }
+      const grouped = students.reduce((acc, student) => {
+        if (!acc[student.team]) acc[student.team] = [];
+        acc[student.team].push(student);
+        return acc;
+      }, {});
+      studentRoster.innerHTML = Object.entries(grouped).map(([team, members]) => `<details class="roster-team"><summary><span>${team}</span><span class="tiny">${members.length}명</span></summary>${members.map((student) => `<div class="roster-chip ${student.connected ? "online" : "offline"}"><span>${student.studentNumber}번 ${student.studentName}</span><span class="tiny">${student.connected ? "온라인" : "오프라인"}</span><button class="danger mini-btn" onclick="deleteStudent('${student.key}', '${student.team.replace(/'/g, "\\'")}')">삭제</button></div>`).join("")}</details>`).join("");
+    }
+
+    function deleteStudent(key, team) {
+      if (!confirm("학생 기록과 제출 자료를 삭제할까요? 접속 중인 학생도 명단에서 제거됩니다.")) return;
+      socket.emit("teacher:delete-student", { classId: currentClassId, key, team }, (res) => {
+        if (!res?.ok) return toast(res?.message || "학생 삭제에 실패했습니다.");
+        toast("학생을 삭제했습니다.");
+      });
+    }
+
+    function renderScores() {
+      const scores = state.classRoom?.scores || {};
+      const rows = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      scoreboard.innerHTML = rows.length ? rows.map(([team, score]) => `<div class="score-card score-row"><b>${team}</b><span>${score}</span></div>`).join("") : `<div class="empty">조가 만들어지면 표시됩니다.</div>`;
+    }
+
+    function renderHistory() {
+      const list = state.classRoom?.roundHistory || [];
+      history.innerHTML = list.length ? list.slice().reverse().map((h) => {
+        const winners = Array.isArray(h.winners) ? h.winners : [{ team: h.winnerTeam, studentName: h.studentName, diff: h.diff, rank: 1, points: 1 }];
+        const summary = winners.map((item) => `${item.rank}등 ${item.team} +${item.points}점`).join(", ");
+        return `<div class="list-item"><span>${h.topicName} - ${summary}</span><b>${winners.length ? `차이 ${winners[0].diff}` : ""}</b></div>`;
+      }).join("") : `<div class="empty">아직 완료된 라운드가 없습니다.</div>`;
+    }
+
+    function render() {
+      renderNav();
+      showScreens();
+      classList.innerHTML = classCards("selectClass");
+      if (screen === "entry") {
+        renderTopicSets();
+        if (!topics.contains(document.activeElement)) renderTopics();
+        renderStudentRoster();
+      }
+      if (screen === "game") {
+        if (state.classRoom?.roundEndsAt && !state.classRoom.answerVisible) startRoundTimer(state.classRoom.roundEndsAt);
+        else if (state.classRoom?.roundPaused && !state.classRoom.answerVisible) renderPausedTimer(state.classRoom.roundRemainingMs);
+        if (state.classRoom?.answerVisible) stopRoundTimer();
+        renderScores();
+        if (!predictionStatus.contains(document.activeElement)) renderPredictionStatus();
+      }
+    }
+  </script>
+</body>
+</html>

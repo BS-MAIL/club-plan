@@ -1,0 +1,563 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>대푯값 수업 학생용</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="made-by">Made by 승희T</div>
+  <main class="wrap student-wrap">
+    <section class="hero student-hero">
+      <div class="hero-card">
+        <p class="eyebrow">STUDENT TABLET</p>
+        <h1>대푯값 탐정단</h1>
+        <p id="heroText">반과 조를 고른 뒤 한 화면에서 자료를 빠르게 제출하세요.</p>
+        <div class="row" id="navButtons"></div>
+      </div>
+      <div class="panel compact-panel">
+        <h2>내 접속 정보</h2>
+        <div id="profileBox" class="row"></div>
+      </div>
+    </section>
+
+    <section id="classScreen" class="screen">
+      <div class="panel compact-panel">
+        <h2>1. 반 선택</h2>
+        <div id="classList" class="student-class-grid"></div>
+      </div>
+    </section>
+
+    <section id="teamScreen" class="screen" hidden>
+      <div class="panel compact-panel">
+        <div class="topic-head">
+          <h2>2. 조 선택</h2>
+          <button class="secondary" onclick="openTeamModal()">새로운 조 만들기</button>
+        </div>
+        <div id="teamList" class="team-chip-grid"></div>
+      </div>
+    </section>
+
+    <section id="profileScreen" class="screen" hidden>
+      <div class="panel compact-panel">
+        <h2>3. 번호와 이름 입력</h2>
+        <form id="profileForm" class="inline-profile-form">
+          <input id="studentNumber" inputmode="numeric" placeholder="번호">
+          <input id="studentName" placeholder="이름">
+          <button type="submit">입장하기</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="activityScreen" class="screen" hidden>
+      <section class="panel compact-panel">
+        <div class="topic-head">
+          <h2>자료 입력</h2>
+          <span id="submitState" class="pill">입력 대기</span>
+        </div>
+        <div id="submitTopics" class="compact-topic-list"></div>
+        <div class="row submit-actions">
+          <button id="submitAllBtn" class="leaf" onclick="submitAllValues()">자료 제출</button>
+          <button id="editValuesBtn" class="secondary" onclick="unlockValues()" disabled>수정하기</button>
+        </div>
+      </section>
+      <section class="panel compact-panel">
+        <h2>점수판</h2>
+        <div id="scoreboard" class="list"></div>
+      </section>
+    </section>
+
+    <section id="gameStudentScreen" class="screen" hidden>
+      <section class="student-topic-banner" id="studentTopicBanner">주제를 기다리는 중...</section>
+      <div id="studentRoundTimer" class="round-timer student-timer" hidden>01:30</div>
+      <section class="student-game-grid">
+        <div class="panel compact-panel">
+          <h2>대표 선택</h2>
+          <div id="predictionBox"></div>
+        </div>
+        <section class="panel compact-panel">
+          <h2>점수판</h2>
+          <div id="gameScoreboard" class="list"></div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div id="teamModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <h2>새로운 조 만들기</h2>
+      <form id="teamForm" class="stack">
+        <input id="newTeam" placeholder="예: 1조, 통계왕팀" autocomplete="off">
+        <div class="row">
+          <button type="submit">만들기</button>
+          <button type="button" class="secondary" onclick="closeTeamModal()">취소</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="approvalModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <h2>우리 조 대표 동의</h2>
+      <div id="approvalText"></div>
+      <div class="row">
+        <button class="leaf" onclick="approvePrediction()">동의하기</button>
+        <button class="danger" onclick="rejectProposal()">동의하지 않음</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="studentResultModal" class="modal-backdrop" hidden>
+    <div class="modal-card result-card">
+      <div id="studentResultBox"></div>
+      <button onclick="studentResultModal.hidden = true">닫기</button>
+    </div>
+  </div>
+  <div id="countdownOverlay" class="countdown-overlay" hidden><span id="countdownNumber">3</span></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared.js"></script>
+  <script>
+    let screen = "class";
+    let currentTeam = localStorage.getItem("rv-team") || "";
+    let entered = false;
+    let valuesLocked = false;
+    let rouletteLoading = false;
+    let rouletteTimer = null;
+    let rouletteDots = 0;
+    let shownAnswerRoundId = null;
+    let draftValues = {};
+    let submitTopicsRenderKey = "";
+    let roundTimerId = null;
+    let activeRoundEndsAt = null;
+    let countdownStarted = false;
+    let selectedPredictionEntryId = "";
+    let currentStudentKey = localStorage.getItem("rv-student-key") || "";
+    let currentStudentTeam = localStorage.getItem("rv-student-team") || "";
+    const urlClassId = new URLSearchParams(window.location.search).get("class");
+
+    studentNumber.value = localStorage.getItem("rv-number") || "";
+    studentName.value = localStorage.getItem("rv-name") || "";
+
+    if (urlClassId) {
+      currentClassId = urlClassId;
+      localStorage.setItem("rv-class-id", urlClassId);
+      joinClass(urlClassId);
+    }
+
+    teamForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      socket.emit("student:create-team", { classId: currentClassId, team: newTeam.value }, (res) => {
+        if (!res.ok) return toast(res.message);
+        chooseTeam(res.team);
+        newTeam.value = "";
+        closeTeamModal();
+      });
+    });
+
+    socket.on("class:roulette-start", () => {
+      rouletteLoading = true;
+      studentResultModal.hidden = true;
+      startRouletteLoading();
+      render();
+    });
+
+    socket.on("class:answer", (payload) => {
+      rouletteLoading = false;
+      stopRouletteLoading();
+      stopRoundTimer();
+      countdownOverlay.hidden = true;
+      shownAnswerRoundId = payload.roundId;
+      studentResultBox.innerHTML = answerResultHtml(payload);
+      studentResultModal.hidden = false;
+      render();
+    });
+
+    function onRoundChanged() {
+      rouletteLoading = false;
+      stopRouletteLoading();
+      stopRoundTimer();
+      countdownOverlay.hidden = true;
+      studentResultModal.hidden = true;
+      approvalModal.hidden = true;
+      selectedPredictionEntryId = "";
+    }
+
+    function onClassDeleted() {
+      screen = "class";
+      entered = false;
+      rouletteLoading = false;
+      stopRouletteLoading();
+      stopRoundTimer();
+      countdownOverlay.hidden = true;
+      studentResultModal.hidden = true;
+      approvalModal.hidden = true;
+      toast("선택한 반이 삭제되었습니다.");
+    }
+
+    profileForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!studentNumber.value.trim() || !studentName.value.trim()) return toast("번호와 이름을 입력하세요.");
+      localStorage.setItem("rv-number", studentNumber.value.trim());
+      localStorage.setItem("rv-name", studentName.value.trim());
+      socket.emit("student:join-profile", { classId: currentClassId, ...profile(), previousKey: currentStudentKey, previousTeam: currentStudentTeam }, (res) => {
+        if (!res.ok) return toast(res.message);
+        entered = true;
+        currentStudentKey = res.key;
+        currentStudentTeam = res.team || currentTeam;
+        localStorage.setItem("rv-student-key", currentStudentKey);
+        localStorage.setItem("rv-student-team", currentStudentTeam);
+        resetDraftValues();
+        valuesLocked = Object.keys(loadSavedValues()).length > 0;
+        screen = state.classRoom?.gameStarted ? "game" : "activity";
+        render();
+        toast("입장했습니다.");
+      });
+    });
+
+    function selectClass(classId) {
+      currentClassId = classId;
+      localStorage.setItem("rv-class-id", classId);
+      valuesLocked = false;
+      resetDraftValues();
+      joinClass(classId);
+      screen = "team";
+      render();
+    }
+
+    function afterClassJoin() {
+      if (screen === "class") screen = currentTeam ? "profile" : "team";
+    }
+
+    function chooseTeam(team) {
+      currentTeam = team;
+      localStorage.setItem("rv-team", team);
+      currentStudentTeam = team;
+      localStorage.setItem("rv-student-team", team);
+      valuesLocked = false;
+      resetDraftValues();
+      screen = "profile";
+      render();
+      toast(`${team}을 선택했습니다.`);
+    }
+
+    function go(next) {
+      if (next !== "class" && !currentClassId) return toast("먼저 반을 선택하세요.");
+      if ((next === "profile" || next === "activity") && !currentTeam) return toast("먼저 조를 선택하세요.");
+      if ((next === "activity" || next === "game") && !entered) return toast("번호와 이름으로 입장하세요.");
+      screen = next;
+      render();
+    }
+
+    function profile() {
+      return { studentNumber: studentNumber.value.trim(), studentName: studentName.value.trim(), team: currentTeam };
+    }
+
+    function storageKey() {
+      const p = profile();
+      return `rv-values-${currentClassId}-${currentTeam}-${p.studentNumber}-${p.studentName}`;
+    }
+
+    function loadSavedValues() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey()) || "{}");
+        return saved;
+      } catch {
+        return {};
+      }
+    }
+
+    function saveValues(values) {
+      localStorage.setItem(storageKey(), JSON.stringify(values));
+    }
+
+    function resetDraftValues() {
+      draftValues = {};
+      submitTopicsRenderKey = "";
+    }
+
+    function captureDraftValues() {
+      document.querySelectorAll("#submitTopics input[id^='value-']").forEach((input) => {
+        const topicId = input.id.replace("value-", "");
+        draftValues[topicId] = input.value;
+      });
+    }
+
+    function openTeamModal() {
+      teamModal.hidden = false;
+      setTimeout(() => newTeam.focus(), 50);
+    }
+
+    function closeTeamModal() {
+      teamModal.hidden = true;
+    }
+
+    [teamModal, approvalModal, studentResultModal].forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.hidden = true;
+      });
+      modal.querySelector(".modal-card")?.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    function startRouletteLoading() {
+      stopRouletteLoading();
+      rouletteTimer = setInterval(() => {
+        rouletteDots = (rouletteDots % 3) + 1;
+        if (screen === "game") studentTopicBanner.textContent = `주제 선택중${".".repeat(rouletteDots)}`;
+      }, 420);
+    }
+
+    function stopRouletteLoading() {
+      if (rouletteTimer) clearInterval(rouletteTimer);
+      rouletteTimer = null;
+      rouletteDots = 0;
+    }
+
+    function startRoundTimer(endsAt) {
+      if (!endsAt) return stopRoundTimer();
+      if (activeRoundEndsAt === endsAt && roundTimerId) return;
+      stopRoundTimer(false);
+      activeRoundEndsAt = endsAt;
+      countdownStarted = false;
+      studentRoundTimer.hidden = false;
+      const tick = () => {
+        const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const seconds = String(remaining % 60).padStart(2, "0");
+        studentRoundTimer.textContent = `${minutes}:${seconds}`;
+        if (remaining <= 0) {
+          stopRoundTimer(false);
+          if (!countdownStarted && !state.classRoom?.answerVisible) startCountdown();
+        }
+      };
+      tick();
+      roundTimerId = setInterval(tick, 250);
+    }
+
+    function stopRoundTimer(clearActive = true) {
+      if (roundTimerId) clearInterval(roundTimerId);
+      roundTimerId = null;
+      if (typeof studentRoundTimer !== "undefined") studentRoundTimer.hidden = true;
+      if (clearActive) activeRoundEndsAt = null;
+    }
+
+    function renderPausedTimer(remainingMs) {
+      stopRoundTimer();
+      const remaining = Math.max(0, Math.ceil((remainingMs || 0) / 1000));
+      const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const seconds = String(remaining % 60).padStart(2, "0");
+      studentRoundTimer.textContent = `${minutes}:${seconds} 일시정지`;
+      studentRoundTimer.hidden = false;
+    }
+
+    function startCountdown() {
+      countdownStarted = true;
+      let n = 3;
+      countdownOverlay.hidden = false;
+      const tick = () => {
+        countdownNumber.textContent = n;
+        countdownNumber.classList.remove("pop-count");
+        void countdownNumber.offsetWidth;
+        countdownNumber.classList.add("pop-count");
+        if (n === 0) {
+          countdownOverlay.hidden = true;
+          return;
+        }
+        n -= 1;
+        setTimeout(tick, 900);
+      };
+      tick();
+    }
+
+    function proposalKey(proposal, topic) {
+      return `rv-rejected-proposal-${currentClassId}-${topic.id}-${proposal.team}-${proposal.entryId}-${proposal.proposedBy}-${proposal.at}`;
+    }
+
+    function isProposalRejected(proposal, topic) {
+      if (!proposal) return false;
+      return localStorage.getItem(proposalKey(proposal, topic)) === "1";
+    }
+
+    function rejectProposal() {
+      const topic = selectedTopic();
+      const proposal = topic?.predictions.find((item) => item.team === currentTeam);
+      const pending = proposal?.changeProposal || proposal;
+      if (topic && pending) localStorage.setItem(proposalKey(pending, topic), "1");
+      approvalModal.hidden = true;
+      toast("이 제안은 다시 표시하지 않습니다.");
+    }
+
+    function submitAllValues() {
+      const topics = state.classRoom?.topics || [];
+      const values = {};
+      for (const topic of topics) {
+        const input = document.querySelector(`#value-${topic.id}`);
+        if (input && input.value !== "") values[topic.id] = input.value;
+      }
+      const entries = Object.entries(values);
+      if (!entries.length) return toast("제출할 값을 입력하세요.");
+      let done = 0;
+      let failed = false;
+      entries.forEach(([topicId, value]) => {
+        socket.emit("student:submit-value", { classId: currentClassId, topicId, ...profile(), value }, (res) => {
+          done += 1;
+          if (!res.ok) {
+            failed = true;
+            toast(res.message);
+          }
+          if (done === entries.length && !failed) {
+            saveValues(values);
+            draftValues = { ...values };
+            valuesLocked = true;
+            renderSubmitTopics();
+            toast("자료를 제출했습니다.");
+          }
+        });
+      });
+    }
+
+    function unlockValues() {
+      valuesLocked = false;
+      renderSubmitTopics();
+      toast("수정할 수 있습니다.");
+    }
+
+    function renderStudentClasses() {
+      if (!state.classes.length) return `<div class="empty">아직 개설된 반이 없습니다.</div>`;
+      return state.classes.map((klass) => `<article class="choice-card ${klass.id === currentClassId ? "selected" : ""}" onclick="selectClass('${klass.id}')"><h3>${klass.name}</h3><p>${klass.topicCount}개 주제 · ${klass.teams.length}개 조</p></article>`).join("");
+    }
+
+    function renderNav() {
+      navButtons.innerHTML = `<button class="secondary" onclick="go('class')">반 선택</button><button class="secondary" onclick="go('team')">조 선택</button><button class="secondary" onclick="go('profile')">번호/이름</button><button class="secondary" onclick="go('activity')">자료 입력</button><button class="secondary" onclick="go('game')">게임</button>`;
+      const klass = state.classRoom || currentClassSummary();
+      profileBox.innerHTML = `<span class="pill">${klass ? klass.name : "반 미선택"}</span><span class="pill">${currentTeam || "조 미선택"}</span><span class="pill">${studentNumber.value || "?"}번 ${studentName.value || "이름 미입력"}</span>`;
+    }
+
+    function showScreens() {
+      classScreen.hidden = screen !== "class";
+      teamScreen.hidden = screen !== "team";
+      profileScreen.hidden = screen !== "profile";
+      activityScreen.hidden = screen !== "activity";
+      gameStudentScreen.hidden = screen !== "game";
+    }
+
+    function renderTeams() {
+      const teams = state.classRoom?.teams || [];
+      teamList.innerHTML = teams.length ? teams.map((team) => `<button class="team-chip ${team === currentTeam ? "selected" : ""}" onclick="chooseTeam('${team.replace(/'/g, "\\'")}')">${team}</button>`).join("") : `<div class="empty">아직 만들어진 조가 없습니다. 아래 버튼으로 새 조를 만들어 주세요.</div>`;
+    }
+
+    function renderSubmitTopics() {
+      captureDraftValues();
+      const topics = state.classRoom?.topics || [];
+      const saved = { ...loadSavedValues(), ...draftValues };
+      const renderKey = JSON.stringify({ topics: topics.map(({ id, name, unit, allowText }) => ({ id, name, unit, allowText })), valuesLocked });
+      submitState.textContent = valuesLocked ? "제출 완료" : "수정 가능";
+      submitAllBtn.disabled = valuesLocked;
+      editValuesBtn.disabled = !valuesLocked;
+      if (submitTopicsRenderKey === renderKey) return;
+      submitTopicsRenderKey = renderKey;
+      submitTopics.innerHTML = topics.length ? topics.map((topic) => `<div class="compact-topic-row"><strong>${topic.name}</strong><input id="value-${topic.id}" ${topic.allowText ? "" : "inputmode=\"decimal\" type=\"number\" step=\"any\""} placeholder="${topic.allowText ? "글자" : "값"}" value="${saved[topic.id] ?? ""}" ${valuesLocked ? "disabled" : ""}><span class="tiny">${topic.allowText ? "글자" : (topic.unit || "단위 없음")}</span></div>`).join("") : `<div class="empty">교사가 주제를 추가하면 여기에 표시됩니다.</div>`;
+      submitTopics.querySelectorAll("input[id^='value-']").forEach((input) => {
+        input.addEventListener("input", () => {
+          draftValues[input.id.replace("value-", "")] = input.value;
+        });
+      });
+    }
+
+    function renderPrediction() {
+      const existingSelection = document.querySelector("#predictEntry")?.value;
+      if (existingSelection) selectedPredictionEntryId = existingSelection;
+      const topic = selectedTopic();
+      if (!topic) {
+        predictionBox.innerHTML = `<div class="empty">아직 랜덤 주제가 선택되지 않았습니다.</div>`;
+        return;
+      }
+      const candidates = topic.entries.filter((entry) => entry.team === currentTeam);
+      const candidateOptions = (items) => items.map((e) => `<option value="${e.id}" ${e.id === selectedPredictionEntryId ? "selected" : ""}>${e.studentNumber}번 ${e.studentName}</option>`).join("");
+      const bindPredictionSelect = () => {
+        const select = document.querySelector("#predictEntry");
+        if (select) {
+          selectedPredictionEntryId = select.value;
+          select.addEventListener("change", () => selectedPredictionEntryId = select.value);
+        }
+      };
+      const myKey = `${studentNumber.value.trim()}-${studentName.value.trim()}`;
+      const proposal = topic.predictions.find((item) => item.team === currentTeam);
+      const pending = proposal?.changeProposal || proposal;
+      const shouldAskApproval = entered && screen === "game" && pending?.proposedBy && pending.proposedBy !== myKey && !(pending.approvals || []).includes(myKey) && (!proposal?.confirmed || proposal.changeProposal) && !isProposalRejected(pending, topic);
+      if (!shouldAskApproval && !approvalModal.hidden) approvalModal.hidden = true;
+      if (shouldAskApproval && approvalModal.hidden) {
+        const entry = topic.entries.find((item) => item.id === pending.entryId);
+        approvalText.innerHTML = `<p><b>${currentTeam}</b> 대표${proposal?.changeProposal ? "를 변경해서" : "로"} <b>${entry ? `${entry.studentNumber}번 ${entry.studentName}` : "선택된 학생"}</b>을 제출할까요?</p><p class="tiny">필요 인원이 동의하면 우리 조 대표로 확정됩니다.</p>`;
+        approvalModal.hidden = false;
+      }
+      if (proposal?.confirmed) {
+        const entry = topic.entries.find((item) => item.id === proposal.entryId);
+        const options = candidateOptions(candidates.filter((e) => e.id !== proposal.entryId));
+        const change = proposal.changeProposal ? `<p class="pill">변경 동의 ${proposal.changeProposal.approvals?.length || 0}명 진행 중</p>` : options ? `<div class="prediction-bar"><label>다른 대표 학생<select id="predictEntry">${options}</select></label><button class="leaf" onclick="submitPrediction(true)">변경 제안</button></div>` : "";
+        predictionBox.innerHTML = `<div class="topic-card selected prediction-card"><div class="answer-box compact-answer"><h3>우리 조 대표 제출 완료</h3><p>${entry ? `${entry.studentNumber}번 ${entry.studentName}` : "대표 학생"}</p></div>${change}</div>`;
+        bindPredictionSelect();
+        return;
+      }
+      const needed = Math.floor(Math.max(1, (state.classRoom?.students || []).filter((student) => student.team === currentTeam).length) / 2) + 1;
+      const status = proposal ? `<p class="pill">동의 ${proposal.approvals?.length || 0}명 / ${needed}명 필요</p>` : "";
+      predictionBox.innerHTML = `<div class="topic-card selected prediction-card"><p>우리 조에서 대푯값에 가장 가까울 것 같은 학생을 고르세요.</p>${status}${candidates.length ? `<div class="prediction-bar"><label>대표 학생<select id="predictEntry">${candidateOptions(candidates)}</select></label><button class="leaf" onclick="submitPrediction()">대표 제안</button></div>` : `<div class="empty">먼저 이 주제에 우리 조 학생들의 값을 제출하세요.</div>`}</div>`;
+      bindPredictionSelect();
+    }
+
+    function submitPrediction(change = false) {
+      const entryId = document.querySelector("#predictEntry")?.value;
+      const eventName = change ? "student:change-prediction" : "student:submit-prediction";
+      socket.emit(eventName, { classId: currentClassId, team: currentTeam, entryId, explanation: "", ...profile() }, (res) => toast(res.ok ? (change ? "대표 변경을 제안했습니다." : "대표를 제안했습니다.") : res.message));
+    }
+
+    function approvePrediction() {
+      socket.emit("student:approve-prediction", { classId: currentClassId, team: currentTeam, ...profile() }, (res) => {
+        if (!res.ok) return toast(res.message);
+        approvalModal.hidden = true;
+        toast(res.confirmed ? "우리 조 대표가 확정되었습니다." : "동의했습니다.");
+      });
+    }
+
+    function renderScores() {
+      const rows = Object.entries(state.classRoom?.scores || {}).sort((a, b) => b[1] - a[1]);
+      const html = rows.length ? rows.map(([team, score]) => `<div class="score-card score-row"><b>${team}</b><span>${score}</span></div>`).join("") : `<div class="empty">점수 대기 중</div>`;
+      scoreboard.innerHTML = html;
+      if (typeof gameScoreboard !== "undefined") gameScoreboard.innerHTML = html;
+    }
+
+    function render() {
+      if (entered && state.classRoom?.gameStarted && screen === "activity") screen = "game";
+      if (entered && state.classRoom && !state.classRoom.gameStarted && screen === "game") screen = "activity";
+      if (state.classRoom && !state.classRoom.answerVisible) shownAnswerRoundId = null;
+      document.body.classList.toggle("student-game-mode", screen === "game");
+      if (state.classRoom?.answerVisible && state.classRoom.roundId !== shownAnswerRoundId && screen === "game") {
+        const payload = roundResultFromState();
+        if (payload) {
+          shownAnswerRoundId = payload.roundId;
+          studentResultBox.innerHTML = answerResultHtml(payload);
+          studentResultModal.hidden = false;
+        }
+      }
+      renderNav();
+      showScreens();
+      classList.innerHTML = renderStudentClasses();
+      if (screen === "team") renderTeams();
+      if (screen === "activity") {
+        renderSubmitTopics();
+        renderScores();
+      }
+      if (screen === "game") {
+        const topic = selectedTopic();
+        if (!rouletteLoading) studentTopicBanner.textContent = topic ? topic.name : "주제를 기다리는 중...";
+        if (state.classRoom?.roundEndsAt && !state.classRoom.answerVisible) startRoundTimer(state.classRoom.roundEndsAt);
+        else if (state.classRoom?.roundPaused && !state.classRoom.answerVisible) renderPausedTimer(state.classRoom.roundRemainingMs);
+        if (state.classRoom?.answerVisible) stopRoundTimer();
+        if (!predictionBox.contains(document.activeElement)) renderPrediction();
+        renderScores();
+      }
+    }
+  </script>
+</body>
+</html>
